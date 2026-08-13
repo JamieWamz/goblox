@@ -32,7 +32,7 @@ func newDeleteCommand(opts *options) *cobra.Command {
 					Message: fmt.Sprintf("Permanently delete %q?", task.Description),
 					Default: false,
 				}
-				if err := survey.AskOne(prompt, &confirmed); err != nil {
+				if err := opts.askOne(prompt, &confirmed); err != nil {
 					return fmt.Errorf("confirm deletion: %w", err)
 				}
 				if !confirmed {

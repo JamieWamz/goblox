@@ -21,7 +21,7 @@ func newAddCommand(opts *options) *cobra.Command {
 			description := strings.TrimSpace(strings.Join(args, " "))
 			if description == "" {
 				prompt := survey.Input{Message: "Task description:"}
-				if err := survey.AskOne(&prompt, &description); err != nil {
+				if err := opts.askOne(&prompt, &description); err != nil {
 					return fmt.Errorf("read description: %w", err)
 				}
 			}

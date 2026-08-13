@@ -145,6 +145,15 @@ func TestTaskIDResolutionDetectsAmbiguousPrefixes(t *testing.T) {
 	assert.Equal(t, "deadbeef000000000000000000000001", task.ID)
 }
 
+func TestTaskIDResolutionRejectsInvalidIDs(t *testing.T) {
+	db := newTestDatabase(t)
+
+	for _, id := range []string{"", "not-hex", "%", "123456789012345678901234567890123"} {
+		_, err := db.GetTask(context.Background(), id)
+		assert.ErrorIs(t, err, ErrInvalidTaskID)
+	}
+}
+
 func TestDatabaseHonorsCancelledContext(t *testing.T) {
 	db := newTestDatabase(t)
 	ctx, cancel := context.WithCancel(context.Background())

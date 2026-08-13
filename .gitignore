@@ -11,8 +11,8 @@
 *.test
 
 # Coverage
-*.out
-*.html
+/coverage.out
+/coverage.html
 
 # IDE
 .idea/
@@ -29,5 +29,7 @@ Thumbs.db
 .env.local
 
 # Binary artifacts
-goblox
-goblox.db
+/goblox
+/goblox.db
+/goblox.db-shm
+/goblox.db-wal

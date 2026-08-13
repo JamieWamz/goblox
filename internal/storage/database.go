@@ -16,6 +16,7 @@ import (
 var (
 	ErrTaskNotFound    = errors.New("task not found")
 	ErrAmbiguousTaskID = errors.New("task ID prefix is ambiguous")
+	ErrInvalidTaskID   = errors.New("invalid task ID")
 )
 
 //go:embed migrations/*.sql
@@ -246,8 +247,8 @@ func (d *Database) DeleteTask(ctx context.Context, id string) error {
 
 func (d *Database) resolveTaskID(ctx context.Context, id string) (string, error) {
 	id = strings.TrimSpace(id)
-	if id == "" {
-		return "", fmt.Errorf("%w: empty ID", ErrTaskNotFound)
+	if !isHexID(id) {
+		return "", fmt.Errorf("%w: expected 1 to 32 hexadecimal characters", ErrInvalidTaskID)
 	}
 
 	rows, err := d.db.QueryContext(ctx, `
@@ -282,6 +283,20 @@ func (d *Database) resolveTaskID(ctx context.Context, id string) (string, error)
 		return "", fmt.Errorf("%w: %s", ErrAmbiguousTaskID, id)
 	}
 	return matches[0], nil
+}
+
+func isHexID(id string) bool {
+	if len(id) == 0 || len(id) > 32 {
+		return false
+	}
+	for _, character := range id {
+		if !((character >= '0' && character <= '9') ||
+			(character >= 'a' && character <= 'f') ||
+			(character >= 'A' && character <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 type rowScanner interface {

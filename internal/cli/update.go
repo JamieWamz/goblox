@@ -41,7 +41,7 @@ func newUpdateCommand(opts *options) *cobra.Command {
 				cmd.Flags().Changed("status") ||
 				cmd.Flags().Changed("due") || clearDue
 			if !changed {
-				if err := promptForTaskUpdate(task); err != nil {
+				if err := promptForTaskUpdate(opts, task); err != nil {
 					return err
 				}
 			} else {
@@ -86,7 +86,7 @@ func newUpdateCommand(opts *options) *cobra.Command {
 	return cmd
 }
 
-func promptForTaskUpdate(task *models.Task) error {
+func promptForTaskUpdate(opts *options, task *models.Task) error {
 	description := task.Description
 	priority := string(task.Priority)
 	status := string(task.Status)
@@ -107,7 +107,7 @@ func promptForTaskUpdate(task *models.Task) error {
 		Status      string `survey:"status"`
 		DueDate     string `survey:"due_date"`
 	}{}
-	if err := survey.Ask(questions, &answers); err != nil {
+	if err := opts.ask(questions, &answers); err != nil {
 		return fmt.Errorf("read task updates: %w", err)
 	}
 

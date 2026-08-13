@@ -1,44 +1,43 @@
-.PHONY: help build test coverage run clean install fmt lint
+.PHONY: help build test coverage run clean install fmt fmt-check lint check
 
-BINARY_NAME=goblox
-BUILD_DIR=bin
+BINARY_NAME := goblox
+BUILD_DIR := bin
 
-help:
+help: ## Show available targets
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build:
-	@echo "Building $(BINARY_NAME)..."
+build: ## Build the CLI binary
 	@mkdir -p $(BUILD_DIR)
-	@go build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/goblox
-	@echo "Done! Binary at $(BUILD_DIR)/$(BINARY_NAME)"
+	go build -trimpath -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/goblox
 
-test:
-	@echo "Running tests..."
-	@go test -v -race -cover ./...
+test: ## Run race-enabled tests with package coverage
+	go test -race -cover ./...
 
-coverage:
-	@echo "Generating coverage report..."
-	@go test -coverprofile=coverage.out ./...
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report: coverage.html"
+coverage: ## Generate HTML and text coverage reports
+	go test -race -covermode=atomic -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
 
-run:
-	@go run ./cmd/goblox/main.go
+run: ## Run the CLI from source
+	go run ./cmd/goblox
 
-clean:
-	@echo "Cleaning..."
-	@rm -rf $(BUILD_DIR)
-	@rm -f coverage.out coverage.html
-	@echo "Done!"
+clean: ## Remove generated build and coverage artifacts
+	rm -rf $(BUILD_DIR)
+	rm -f coverage.out coverage.html
 
-fmt:
-	@go fmt ./...
+fmt: ## Format Go source files
+	gofmt -w $$(find . -name '*.go' -not -path './vendor/*')
 
-lint:
-	@golangci-lint run ./...
+fmt-check: ## Verify Go source formatting
+	@test -z "$$(gofmt -l $$(find . -name '*.go' -not -path './vendor/*'))"
 
-install:
-	@go install ./cmd/goblox
+lint: fmt-check ## Run static analysis
+	go vet ./...
+
+check: lint test build ## Run all required quality checks
+
+install: ## Install goblox with go install
+	go install ./cmd/goblox

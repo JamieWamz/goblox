@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/JamieWamz/goblox/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -9,12 +10,20 @@ const version = "1.0.0"
 
 type options struct {
 	dbPath string
+	askOne func(survey.Prompt, interface{}, ...survey.AskOpt) error
+	ask    func([]*survey.Question, interface{}, ...survey.AskOpt) error
 }
 
 // NewRootCommand constructs an isolated command tree. Keeping construction free
 // of package globals makes the CLI safe to exercise repeatedly in tests.
 func NewRootCommand() *cobra.Command {
-	opts := &options{}
+	return newRootCommand(&options{
+		askOne: survey.AskOne,
+		ask:    survey.Ask,
+	})
+}
+
+func newRootCommand(opts *options) *cobra.Command {
 	root := &cobra.Command{
 		Use:           "goblox",
 		Short:         "A focused task tracker for your terminal",
