@@ -1,49 +1,54 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 )
 
-var deleteCmd = &cobra.Command{
-	Use:   "delete <id>",
-	Short: "Delete a task",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		id := args[0]
+func newDeleteCommand(opts *options) *cobra.Command {
+	var force bool
 
-		confirm := false
-		prompt := &survey.Confirm{
-			Message: "Are you sure you want to delete this task?",
-			Default: false,
-		}
-		if err := survey.AskOne(prompt, &confirm); err != nil {
-			return err
-		}
+	cmd := &cobra.Command{
+		Use:   "delete <id>",
+		Short: "Permanently delete a task",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			db, err := opts.database()
+			if err != nil {
+				return err
+			}
+			defer db.Close()
 
-		if !confirm {
-			fmt.Println("Cancelled.")
+			task, err := db.GetTask(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+
+			if !force {
+				confirmed := false
+				prompt := &survey.Confirm{
+					Message: fmt.Sprintf("Permanently delete %q?", task.Description),
+					Default: false,
+				}
+				if err := survey.AskOne(prompt, &confirmed); err != nil {
+					return fmt.Errorf("confirm deletion: %w", err)
+				}
+				if !confirmed {
+					fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+					return nil
+				}
+			}
+
+			if err := db.DeleteTask(cmd.Context(), task.ID); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Deleted %s: %s\n", shortID(task.ID), task.Description)
 			return nil
-		}
+		},
+	}
 
-		db, err := getDB()
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
-		if err := db.DeleteTask(context.Background(), id); err != nil {
-			return err
-		}
-
-		fmt.Printf("✓ Deleted task: %s\n", id[:8])
-		return nil
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(deleteCmd)
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "delete without confirmation")
+	return cmd
 }

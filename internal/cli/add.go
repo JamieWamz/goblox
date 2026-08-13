@@ -1,70 +1,63 @@
 package cli
 
 import (
-	"context"
 	"fmt"
-	"time"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/JamieWamz/goblox/internal/models"
 	"github.com/spf13/cobra"
 )
 
-var addCmd = &cobra.Command{
-	Use:   "add [description]",
-	Short: "Add a new task",
-	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var description string
-		if len(args) > 0 {
-			description = args[0]
-		} else {
-			prompt := survey.Input{
-				Message: "Task description:",
+func newAddCommand(opts *options) *cobra.Command {
+	var priority string
+	var dueDate string
+
+	cmd := &cobra.Command{
+		Use:   "add [description]",
+		Short: "Add a task",
+		Args:  cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			description := strings.TrimSpace(strings.Join(args, " "))
+			if description == "" {
+				prompt := survey.Input{Message: "Task description:"}
+				if err := survey.AskOne(&prompt, &description); err != nil {
+					return fmt.Errorf("read description: %w", err)
+				}
 			}
-			if err := survey.AskOne(&prompt, &description); err != nil {
+
+			task := &models.Task{
+				Description: description,
+				Priority:    models.Priority(priority),
+				Status:      models.StatusPending,
+			}
+			if dueDate != "" {
+				parsedDate, err := parseDueDate(dueDate)
+				if err != nil {
+					return err
+				}
+				task.DueDate = &parsedDate
+			}
+			if err := task.Validate(); err != nil {
 				return err
 			}
-		}
 
-		priority, _ := cmd.Flags().GetString("priority")
-		dueDate, _ := cmd.Flags().GetString("due")
-
-		task := &models.Task{
-			Description: description,
-			Priority:    models.Priority(priority),
-			Status:      models.StatusPending,
-		}
-
-		if dueDate != "" {
-			parsedDate, err := time.Parse("2006-01-02", dueDate)
+			db, err := opts.database()
 			if err != nil {
-				return fmt.Errorf("invalid due date format (use YYYY-MM-DD): %w", err)
+				return err
 			}
-			task.DueDate = &parsedDate
-		}
+			defer db.Close()
 
-		if err := task.Validate(); err != nil {
-			return err
-		}
+			if err := db.CreateTask(cmd.Context(), task); err != nil {
+				return err
+			}
 
-		db, err := getDB()
-		if err != nil {
-			return err
-		}
-		defer db.Close()
+			fmt.Fprintf(cmd.OutOrStdout(), "Added %s: %s\n", shortID(task.ID), task.Description)
+			return nil
+		},
+	}
 
-		if err := db.CreateTask(context.Background(), task); err != nil {
-			return err
-		}
-
-		fmt.Printf("✓ Added task: %s\n", task.Description)
-		return nil
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(addCmd)
-	addCmd.Flags().StringP("priority", "p", "medium", "Task priority (low, medium, high)")
-	addCmd.Flags().StringP("due", "d", "", "Due date (YYYY-MM-DD)")
+	cmd.Flags().StringVarP(&priority, "priority", "p", string(models.PriorityMedium), "priority: low, medium, or high")
+	cmd.Flags().StringVarP(&dueDate, "due", "d", "", "due date in YYYY-MM-DD format")
+	return cmd
 }

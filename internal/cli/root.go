@@ -1,33 +1,50 @@
 package cli
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/JamieWamz/goblox/internal/storage"
 	"github.com/spf13/cobra"
 )
 
-var dbPath string
+const version = "1.0.0"
 
-var rootCmd = &cobra.Command{
-	Use:   "goblox",
-	Short: "goblox - CLI task tracker",
-	Long: `goblox is a production-grade task management tool for your terminal.
-Manage your tasks with priority, due dates, and status tracking.`,
+type options struct {
+	dbPath string
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+// NewRootCommand constructs an isolated command tree. Keeping construction free
+// of package globals makes the CLI safe to exercise repeatedly in tests.
+func NewRootCommand() *cobra.Command {
+	opts := &options{}
+	root := &cobra.Command{
+		Use:           "goblox",
+		Short:         "A focused task tracker for your terminal",
+		Version:       version,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Long: `goblox keeps a local task list with priorities, due dates, and status tracking.
+
+Task IDs may be supplied in full or as the unique eight-character prefixes shown
+in table output. Use --db to select a different SQLite database.`,
 	}
+
+	root.PersistentFlags().StringVar(&opts.dbPath, "db", "./goblox.db", "path to the SQLite database")
+	root.AddCommand(
+		newAddCommand(opts),
+		newArchiveCommand(opts),
+		newDeleteCommand(opts),
+		newExportCommand(opts),
+		newListCommand(opts),
+		newShowCommand(opts),
+		newUpdateCommand(opts),
+	)
+
+	return root
 }
 
-func init() {
-	rootCmd.PersistentFlags().StringVar(&dbPath, "db", "./goblox.db", "path to database file")
+func Execute() error {
+	return NewRootCommand().Execute()
 }
 
-func getDB() (*storage.Database, error) {
-	return storage.NewDatabase(dbPath)
+func (o *options) database() (*storage.Database, error) {
+	return storage.NewDatabase(o.dbPath)
 }
