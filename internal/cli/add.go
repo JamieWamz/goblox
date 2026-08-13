@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/JamieWamz/goblox/internal/models"
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/JamieWamz/goblox/internal/models"
 	"github.com/spf13/cobra"
 )
 

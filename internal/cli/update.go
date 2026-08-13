@@ -35,11 +35,11 @@ var updateCmd = &cobra.Command{
 			dueDateStr = task.DueDate.Format("2006-01-02")
 		}
 
-		prompt := survey.Edit{
+		prompt := survey.Input{
 			Message: "Description:",
 			Default: task.Description,
 		}
-		if err := survey.AskOne(&prompt, &description, survey.WithKeepTemplate(true)); err != nil {
+		if err := survey.AskOne(&prompt, &description); err != nil {
 			return err
 		}
 

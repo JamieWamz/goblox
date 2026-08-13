@@ -114,3 +114,14 @@ func TestTaskWithDueDate(t *testing.T) {
 	assert.NoError(t, task.Validate())
 	assert.NotNil(t, task.DueDate)
 }
+
+func TestTaskValidateTrimsDescription(t *testing.T) {
+	task := &Task{
+		Description: "  Prepare release  ",
+		Priority:    PriorityMedium,
+		Status:      StatusPending,
+	}
+
+	assert.NoError(t, task.Validate())
+	assert.Equal(t, "Prepare release", task.Description)
+}
